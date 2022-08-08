@@ -11,6 +11,8 @@ dependencies:
   dart_jsonwebtoken: ^2.4.2
   frog_jwt:
     path: ../packages/frog_jwt
+  user_repository:
+    path: ../packages/user_repository
 
 dev_dependencies:
   mocktail: ^0.3.0
