@@ -66,6 +66,34 @@ void main() {
       await expectLater(await response.body(), equals(text));
     });
 
+    test(
+        'rejects unauthorized request on "unless" path with not allowed method',
+        () async {
+      Handler middleware(Handler handler) {
+        return handler.use(
+          frogJwt(
+            secret: secret,
+            unless: [
+              const UriPath('auth', methods: [HttpMethod.post])
+            ],
+          ),
+        );
+      }
+
+      Response onRequest(RequestContext context) {
+        return Response(body: text);
+      }
+
+      final handler =
+          const Pipeline().addMiddleware(middleware).addHandler(onRequest);
+      final request = Request.get(Uri.parse('http://localhost/auth'));
+      when(() => context.request).thenReturn(request);
+      await expectLater(
+        handler(context),
+        throwsA(isA<TokenNotFoundError>()),
+      );
+    });
+
     test('getToken extracts token from query string', () async {
       Handler middleware(Handler handler) {
         return handler.use(

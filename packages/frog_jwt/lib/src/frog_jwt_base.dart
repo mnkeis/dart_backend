@@ -1,16 +1,31 @@
 import 'package:dart_frog/dart_frog.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 
+/// {@template token_not_found_error}
+/// Error thrown when no token found
+/// {@endtemplate}
 class TokenNotFoundError extends JWTError {
+  /// {@macro token_not_found_error}
   TokenNotFoundError(super.message);
 }
 
+/// {@template uri_path}
+/// class to match path and methods
+/// {@endtemplate}
 class UriPath {
+  /// {@macro uri_path}
   const UriPath(this.path, {this.methods});
+
+  /// Path to match
   final String path;
-  final List<String>? methods;
+
+  /// Methods to match
+  final List<HttpMethod>? methods;
 }
 
+/// {@template frog_jwt}
+/// dart_frog middleware to find valid authentication tokens on requests
+/// {@endtemplate}
 Middleware frogJwt({
   required String secret,
   List<UriPath>? unless,
@@ -24,8 +39,7 @@ Middleware frogJwt({
             if (element.path != context.request.url.path) {
               return false;
             }
-            if (element.methods?.contains(context.request.method.value) ??
-                true) {
+            if (element.methods?.contains(context.request.method) ?? true) {
               return true;
             }
             return false;
