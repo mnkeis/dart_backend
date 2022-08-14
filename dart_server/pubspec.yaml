@@ -11,6 +11,9 @@ dependencies:
   dart_jsonwebtoken: ^2.4.2
   frog_jwt:
     path: ../packages/frog_jwt
+  pg_user_api:
+    path: ../packages/pg_user_api
+  postgres: ^2.4.6
   user_repository:
     path: ../packages/user_repository
 
