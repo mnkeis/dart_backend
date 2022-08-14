@@ -8,8 +8,17 @@ abstract class UserApi {
   const UserApi();
 
   /// User trying to login with username and password
-  Future<User> getUserWithUsernameAndPassword({
+  Future<User?> getUserWithUsernameAndPassword({
     required String username,
     required String password,
   });
+
+  /// Search the user owner of a given refresh token
+  Future<User?> getUserWithRefreshToken(String refreshToken);
+
+  /// Get a user by it's id
+  Future<User> getUserById(int id);
+
+  /// Update user
+  Future<void> updateUser(User user);
 }
