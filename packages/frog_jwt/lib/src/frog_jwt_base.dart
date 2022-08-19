@@ -62,8 +62,7 @@ Middleware frogJwt({
         throw TokenNotFoundError('token-not-found');
       }
       try {
-        final jwt = JWT.verify(jwtToken, SecretKey(secret));
-        handler.use(provider<JWT>((context) => jwt));
+        JWT.verify(jwtToken, SecretKey(secret));
         return handler(context);
       } catch (e) {
         if (e is JWTUndefinedError && onError != null) {
