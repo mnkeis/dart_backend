@@ -135,10 +135,10 @@ void main() {
         );
         final result = await userRepository
             .createAccessTokenFromRefreshToken(oldRefreshToken);
-        final error = result.asError?.error as AuthenticationException?;
+        final error = result.asError?.error as TokenException?;
         await expectLater(
           error?.failure,
-          AuthenticationFailure.tokenExpired,
+          TokenFailure.tokenExpired,
         );
       });
 
@@ -152,10 +152,10 @@ void main() {
         );
         final result = await userRepository
             .createAccessTokenFromRefreshToken(oldRefreshToken);
-        final error = result.asError?.error as AuthenticationException?;
+        final error = result.asError?.error as TokenException?;
         await expectLater(
           error?.failure,
-          AuthenticationFailure.tokenInvalid,
+          TokenFailure.tokenInvalid,
         );
       });
 
@@ -179,12 +179,81 @@ void main() {
         ).thenAnswer((_) async {});
         final result = await userRepository
             .createAccessTokenFromRefreshToken(oldRefreshToken);
-        final error = result.asError?.error as AuthenticationException?;
+        final error = result.asError?.error as TokenException?;
         verify(() => userApi.getUserById(1)).called(1);
         verify(() => userApi.updateUser(updatedUser)).called(1);
         await expectLater(
           error?.failure,
-          AuthenticationFailure.refreshTokenReused,
+          TokenFailure.refreshTokenReused,
+        );
+      });
+    });
+
+    group('method addUser', () {
+      test('executes successfully', () async {
+        when(() => userApi.createUser(user: user, password: password))
+            .thenAnswer((_) async => true);
+        when(
+          () => userApi.getUserWithUsernameAndPassword(
+            username: username,
+            password: password,
+          ),
+        ).thenAnswer((invocation) async => user);
+        final result =
+            await userRepository.addUser(user: user, password: password);
+        expect(result.asValue?.value, equals(user));
+      });
+    });
+
+    group('method logoutFromAllDevices', () {
+      test('executes succesfully', () async {
+        when(() => userApi.getUserById(1)).thenAnswer((_) async => user);
+        when(() => userApi.updateUser(user.copyWith(refreshTokens: [])))
+            .thenAnswer((_) async {});
+        await userRepository.revokeAllRefreshTokens(1);
+        verify(() => userApi.updateUser(user)).called(1);
+      });
+    });
+
+    group('method updatePassword', () {
+      test('executes succesfully', () async {
+        const newPassword = 'new-password';
+        when(
+          () => userApi.getUserWithUsernameAndPassword(
+            username: username,
+            password: password,
+          ),
+        ).thenAnswer((_) async => user);
+        await userRepository.updatePassword(
+          username: username,
+          password: password,
+          newPassword: newPassword,
+        );
+        verify(
+          () => userApi.updateUserPassword(user: user, password: newPassword),
+        ).called(1);
+      });
+
+      test('returns error if no user found', () async {
+        const newPassword = 'new-password';
+        when(
+          () => userApi.getUserWithUsernameAndPassword(
+            username: username,
+            password: password,
+          ),
+        ).thenAnswer((_) async => null);
+        final result = await userRepository.updatePassword(
+          username: username,
+          password: password,
+          newPassword: newPassword,
+        );
+        await expectLater(
+          result,
+          Result<void>.error(
+            const AuthenticationException(
+              AuthenticationFailure.invalidUsernameOrPassword,
+            ),
+          ),
         );
       });
     });

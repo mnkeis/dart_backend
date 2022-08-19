@@ -16,12 +16,12 @@ enum AuthenticationFailure {
   /// Authentication failed with an invalid username or password
   invalidUsernameOrPassword,
 
-  /// Unauthorized exception thrown by an invalid token
-  tokenInvalid,
+  /// Username is not available
+  usernameNotAvailable,
 
-  /// Unauthorized exception thrown by an expired token
-  tokenExpired,
+  /// Error ocurred while registering
+  registrationFailed,
 
-  /// Unauthorized exception thrown by a refresh token reuse detected
-  refreshTokenReused,
+  /// User not found
+  userNotFound,
 }

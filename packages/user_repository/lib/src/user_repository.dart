@@ -80,8 +80,8 @@ class UserRepository {
         // Delete all refresh tokens for the user
         await _userApi.updateUser(user.copyWith(refreshTokens: []));
         return Result.error(
-          const AuthenticationException(
-            AuthenticationFailure.refreshTokenReused,
+          const TokenException(
+            TokenFailure.refreshTokenReused,
           ),
         );
       }
@@ -102,19 +102,139 @@ class UserRepository {
       if (e is JWTUndefinedError) {
         if (e.error is JWTExpiredError) {
           return Result.error(
-            const AuthenticationException(
-              AuthenticationFailure.tokenExpired,
+            const TokenException(
+              TokenFailure.tokenExpired,
             ),
           );
         }
         if (e.error is JWTInvalidError || e.error is JWTParseError) {
           return Result.error(
-            const AuthenticationException(
-              AuthenticationFailure.tokenInvalid,
+            const TokenException(
+              TokenFailure.tokenInvalid,
             ),
           );
         }
       }
+      return Result.error(e);
+    }
+  }
+
+  /// Delete all refresh tokens of a user
+  Future<void> revokeAllRefreshTokens(int id) async {
+    final user = await _userApi.getUserById(id);
+    await _userApi.updateUser(user.copyWith(refreshTokens: []));
+  }
+
+  /// Returns a user object by its id
+  Future<Result<User>> getUser(int id) async {
+    try {
+      final user = await _userApi.getUserById(id);
+      return Result.value(user.copyWith(refreshTokens: []));
+    } catch (e) {
+      return Result.error(e);
+    }
+  }
+
+  /// Verify if [username] is avaliable
+  Future<Result<bool>> verifyUsername(String username) async {
+    final available = await _userApi.verifyUsername(username);
+    return Result.value(available);
+  }
+
+  /// Creates a new user (register)
+  Future<Result<User>> addUser({
+    required User user,
+    required String password,
+  }) async {
+    final created = await _userApi.createUser(user: user, password: password);
+    if (!created) {
+      return Result.error(
+        const AuthenticationException(
+          AuthenticationFailure.usernameNotAvailable,
+        ),
+      );
+    }
+    final newUser = await _userApi.getUserWithUsernameAndPassword(
+      username: user.username,
+      password: password,
+    );
+    if (newUser == null) {
+      return Result.error(
+        const AuthenticationException(
+          AuthenticationFailure.registrationFailed,
+        ),
+      );
+    }
+    return Result.value(newUser);
+  }
+
+  /// Update user profile
+  Future<Result<void>> updateProfile(User user) async {
+    try {
+      await _userApi.updateUser(user);
+      return Result.value(null);
+    } catch (e) {
+      return Result.error(e);
+    }
+  }
+
+  /// Update user password
+  Future<Result<void>> updatePassword({
+    required String username,
+    required String password,
+    required String newPassword,
+  }) async {
+    final user = await _userApi.getUserWithUsernameAndPassword(
+      username: username,
+      password: password,
+    );
+    if (user == null) {
+      return Result.error(
+        const AuthenticationException(
+          AuthenticationFailure.invalidUsernameOrPassword,
+        ),
+      );
+    }
+    try {
+      await _userApi.updateUserPassword(user: user, password: newPassword);
+      return Result.value(null);
+    } catch (e) {
+      return Result.error(e);
+    }
+  }
+
+  /// Returns a temporary access token that can be used to recover
+  /// a user password
+  Future<Result<RecoveryToken>> getPasswordRecoveryToken(
+    String usernameOrEmail,
+  ) async {
+    final user = await _userApi.getUserWithUsernameOrEmail(usernameOrEmail);
+    if (user == null) {
+      return Result.error(
+        const AuthenticationException(AuthenticationFailure.userNotFound),
+      );
+    }
+    final tokens = _createTokens(user);
+
+    final token = RecoveryToken(
+      email: user.email,
+      username: user.username,
+      token: tokens.accessToken,
+    );
+
+    return Result.value(token);
+  }
+
+  /// Recovery password opration
+  Future<Result<void>> recoverPassword({
+    required int id,
+    required String newPassword,
+  }) async {
+    try {
+      final user = await _userApi.getUserById(id);
+      await _userApi.updateUserPassword(user: user, password: newPassword);
+      return Result.value(null);
+    } catch (e) {
       return Result.error(e);
     }
   }
