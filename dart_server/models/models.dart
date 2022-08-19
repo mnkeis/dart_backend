@@ -1,1 +1,1 @@
-export './token_env.dart';
+export 'config.dart';

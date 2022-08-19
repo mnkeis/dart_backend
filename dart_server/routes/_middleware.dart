@@ -3,12 +3,11 @@ import 'dart:io';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:frog_jwt/frog_jwt.dart';
-import 'package:postgres/postgres.dart';
 
 import '../models/models.dart';
 
 Handler middleware(Handler handler) {
-  final tokenEnv = TokenEnv(
+  final config = Config(
     accessTokenSecret:
         Platform.environment['ACCESS_TOKEN_SECRET'] ?? 'my-access-token-secret',
     accessTokenExpire:
@@ -17,30 +16,32 @@ Handler middleware(Handler handler) {
         Platform.environment['REFRESH_TOKEN_SECRET'] ?? 'refresh-token-secret',
     refreshTokenExpire:
         int.parse(Platform.environment['REFRESH_TOKEN_EXPIRE'] ?? '7'),
-  );
-
-  final dbHost = Platform.environment['DB_HOST'] ?? 'localhost';
-  final dbPort = int.parse(Platform.environment['DB_PORT'] ?? '5432');
-  final dbName = Platform.environment['DB_NAME'] ?? 'databaseName';
-  final dbPassword = Platform.environment['DB_PASSWORD'];
-  final dbUser = Platform.environment['DB_USER'];
-
-  final pg = PostgreSQLConnection(
-    dbHost,
-    dbPort,
-    dbName,
-    username: dbUser,
-    password: dbPassword,
+    dbHost: Platform.environment['DB_HOST'] ?? 'localhost',
+    dbPort: int.parse(Platform.environment['DB_PORT'] ?? '5432'),
+    dbName: Platform.environment['DB_NAME'] ?? 'postgres',
+    dbPassword: Platform.environment['DB_PASSWORD'] ?? 'db_password',
+    dbUser: Platform.environment['DB_USER'] ?? 'postgres',
   );
 
   return handler
-      .use(provider<TokenEnv>((context) => tokenEnv))
-      .use(provider<PostgreSQLConnection>((context) => pg))
+      .use(requestLogger())
+      .use(provider<Config>((context) => config))
       .use(
         frogJwt(
-          secret: tokenEnv.accessTokenSecret,
+          secret: config.accessTokenSecret,
           unless: [
-            const UriPath('api/tokens', methods: [HttpMethod.post])
+            const UriPath(
+              'api/users/authenticate',
+              methods: [HttpMethod.post],
+            ),
+            const UriPath(
+              'api/users/refresh_token',
+              methods: [HttpMethod.post],
+            ),
+            const UriPath(
+              'api/users/register',
+              methods: [HttpMethod.post],
+            )
           ],
           getToken: (request) {
             return request.headers['Authorization']
@@ -60,5 +61,17 @@ Handler middleware(Handler handler) {
             );
           },
         ),
-      );
+      )
+      .use((handler) {
+    return handler;
+  });
+  //     .use(
+  //   provider<User>((context) {
+  //     final token = context.request.headers['Authorization']
+  //             ?.replaceFirst('Bearer ', '') ??
+  //         context.request.url.queryParameters['token'];
+  //     final jwt = JWT.verify(token!, SecretKey(tokenEnv.accessTokenSecret));
+  //     return User.fromJson(jwt.payload as Map<String, dynamic>);
+  //   }),
+  // );
 }
